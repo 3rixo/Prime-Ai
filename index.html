@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OptimusPrime AI Admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>OptimusPrime AI Admin</h1>
+    <p>Manage your Reels, Comments & Rewards</p>
+  </header>
+
+  <main>
+    <div class="stats">
+      <div class="stat-card">
+        <h3>Total Reels</h3>
+        <div class="value" id="totalReels">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>Active</h3>
+        <div class="value" id="activeReels">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>Inactive</h3>
+        <div class="value" id="inactiveReels">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>With Rewards</h3>
+        <div class="value" id="rewardsCount">0</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <input type="text" id="search" placeholder="🔍 Search by Reel link, keyword or reward...">
+      <button onclick="openModal()">➕ Add Reel</button>
+    </div>
+
+    <div class="table-wrapper">
+      <table id="reelTable">
+        <thead>
+          <tr>
+            <th>Reel Link</th>
+            <th>Comment Keyword</th>
+            <th>Reward</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer>
+    <p>© 2025 OptimusPrime Automation - Powered by AutoBot</p>
+  </footer>
+
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add New Reel</h2>
+        <p>Configure your Instagram automation</p>
+      </div>
+      <form id="reelForm" onsubmit="addReel(event)">
+        <div class="form-group">
+          <label>Reel Link *</label>
+          <input type="url" id="reelLink" placeholder="https://instagram.com/reel/..." required>
+        </div>
+        <div class="form-group">
+          <label>Comment Keyword *</label>
+          <input type="text" id="commentKeyword" placeholder="e.g., COLOR, EDIT, PREMIUM" required>
+        </div>
+        <div class="form-group">
+          <label>Reward (Optional)</label>
+          <input type="text" id="rewardLink" placeholder="Link or code to send users">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn-submit">Add Reel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
