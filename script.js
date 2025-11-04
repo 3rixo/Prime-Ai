@@ -1,125 +1,174 @@
-// Temporary in-memory data (later replaced by Python + SQLite)
-let reels = JSON.parse(localStorage.getItem('reels') || '[]');
+// ===============================
+// CONFIGURATION
+// ===============================
+const BASE_URL = "http://10.88.0.3:8080"; // ⚠️ Change this later to your Google Cloud backend URL
 
-function saveToStorage() {
-  localStorage.setItem('reels', JSON.stringify(reels));
-}
+// ===============================
+// DOM ELEMENTS
+// ===============================
+const tableBody = document.querySelector("#reelTable tbody");
+const modal = document.getElementById("modal");
+const form = document.getElementById("reelForm");
+const searchInput = document.getElementById("search");
 
-function updateStats() {
-  document.getElementById('totalReels').textContent = reels.length;
-  document.getElementById('activeReels').textContent = reels.filter(r => r.enabled).length;
-  document.getElementById('inactiveReels').textContent = reels.filter(r => !r.enabled).length;
-  document.getElementById('rewardsCount').textContent = reels.filter(r => r.reward).length;
-}
+let reels = []; // Cached data from backend
 
-function openModal() {
-  document.getElementById('modal').classList.add('active');
-  document.getElementById('reelForm').reset();
-}
+// ===============================
+// INITIAL LOAD
+// ===============================
+document.addEventListener("DOMContentLoaded", () => {
+  fetchReels();
+});
 
-function closeModal() {
-  document.getElementById('modal').classList.remove('active');
-}
-
-function addReel(e) {
-  e.preventDefault();
-  const link = document.getElementById('reelLink').value;
-  const comment = document.getElementById('commentKeyword').value;
-  const reward = document.getElementById('rewardLink').value;
-
-  reels.unshift({ 
-    link, 
-    comment: comment.toUpperCase(), 
-    reward, 
-    enabled: true,
-    id: Date.now()
-  });
-  
-  saveToStorage();
-  renderTable();
-  updateStats();
-  closeModal();
-}
-
-function deleteReel(id) {
-  if (confirm("Are you sure you want to delete this reel?")) {
-    reels = reels.filter(r => r.id !== id);
-    saveToStorage();
-    renderTable();
+// ===============================
+// FETCH ALL REELS FROM BACKEND
+// ===============================
+async function fetchReels() {
+  try {
+    const res = await fetch(`${BASE_URL}/reels`);
+    reels = await res.json();
+    renderTable(reels);
     updateStats();
+  } catch (err) {
+    console.error("Error fetching reels:", err);
   }
 }
 
-function toggleEnable(id) {
-  const reel = reels.find(r => r.id === id);
-  if (reel) {
-    reel.enabled = !reel.enabled;
-    saveToStorage();
-    renderTable();
-    updateStats();
-  }
-}
+// ===============================
+// RENDER TABLE
+// ===============================
+function renderTable(data) {
+  tableBody.innerHTML = "";
 
-function renderTable() {
-  const tableBody = document.querySelector("#reelTable tbody");
-  const search = document.getElementById("search").value.toLowerCase();
-  
-  const filtered = reels.filter(r => 
-    r.link.toLowerCase().includes(search) ||
-    r.comment.toLowerCase().includes(search) ||
-    (r.reward && r.reward.toLowerCase().includes(search))
-  );
-
-  if (filtered.length === 0) {
-    tableBody.innerHTML = `
-      <tr>
-        <td colspan="5">
-          <div class="empty-state">
-            <h3>${search ? 'No results found' : 'No reels yet'}</h3>
-            <p>${search ? 'Try a different search term' : 'Click "Add Reel" to get started'}</p>
-          </div>
-        </td>
-      </tr>
-    `;
+  if (!data.length) {
+    tableBody.innerHTML = `<tr><td colspan="5">No reels found</td></tr>`;
     return;
   }
 
-  tableBody.innerHTML = filtered.map(r => `
-    <tr>
+  data.forEach((reel) => {
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+      <td><a href="${reel.reel_link}" target="_blank">${reel.reel_link}</a></td>
+      <td>${reel.comment_keyword}</td>
+      <td>${reel.reward || "-"}</td>
       <td>
-        <a href="${r.link}" target="_blank" class="reel-link" title="${r.link}">
-          ${r.link}
-        </a>
-      </td>
-      <td>
-        <span class="keyword">${r.comment}</span>
-      </td>
-      <td>
-        <span class="reward">${r.reward || '-'}</span>
-      </td>
-      <td>
-        <button 
-          class="toggle-btn ${r.enabled ? 'on' : 'off'}" 
-          onclick="toggleEnable(${r.id})">
-          ${r.enabled ? 'ON' : 'OFF'}
+        <button onclick="toggleStatus(${reel.id}, '${reel.status}')"
+                class="${reel.status === 'active' ? 'active-btn' : 'inactive-btn'}">
+          ${reel.status}
         </button>
       </td>
       <td>
-        <button class="delete-btn" onclick="deleteReel(${r.id})">🗑</button>
+        <button class="delete-btn" onclick="deleteReel(${reel.id})">🗑️ Delete</button>
       </td>
-    </tr>
-  `).join('');
+    `;
+
+    tableBody.appendChild(row);
+  });
 }
 
-// Event listeners
-document.getElementById("search").addEventListener("input", renderTable);
+// ===============================
+// ADD NEW REEL
+// ===============================
+async function addReel(event) {
+  event.preventDefault();
 
-document.getElementById('modal').addEventListener('click', (e) => {
-  if (e.target.id === 'modal') {
+  const newReel = {
+    reel_link: document.getElementById("reelLink").value.trim(),
+    comment_keyword: document.getElementById("commentKeyword").value.trim(),
+    reward: document.getElementById("rewardLink").value.trim(),
+  };
+
+  try {
+    const res = await fetch(`${BASE_URL}/add_reel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newReel),
+    });
+
+    if (!res.ok) throw new Error("Failed to add reel");
+
     closeModal();
+    fetchReels();
+    form.reset();
+  } catch (err) {
+    console.error("Error adding reel:", err);
   }
+}
+
+// ===============================
+// DELETE REEL
+// ===============================
+async function deleteReel(id) {
+  if (!confirm("Are you sure you want to delete this reel?")) return;
+
+  try {
+    const res = await fetch(`${BASE_URL}/delete_reel/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Failed to delete reel");
+
+    fetchReels();
+  } catch (err) {
+    console.error("Error deleting reel:", err);
+  }
+}
+
+// ===============================
+// TOGGLE REEL STATUS
+// ===============================
+async function toggleStatus(id, currentStatus) {
+  const newStatus = currentStatus === "active" ? "inactive" : "active";
+
+  try {
+    const res = await fetch(`${BASE_URL}/update_status/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+
+    if (!res.ok) throw new Error("Failed to update status");
+
+    fetchReels();
+  } catch (err) {
+    console.error("Error updating status:", err);
+  }
+}
+
+// ===============================
+// SEARCH FUNCTIONALITY
+// ===============================
+searchInput.addEventListener("input", (e) => {
+  const query = e.target.value.toLowerCase();
+  const filtered = reels.filter(
+    (r) =>
+      r.reel_link.toLowerCase().includes(query) ||
+      r.comment_keyword.toLowerCase().includes(query) ||
+      (r.reward && r.reward.toLowerCase().includes(query))
+  );
+  renderTable(filtered);
 });
 
-// Initialize on page load
-renderTable();
-updateStats();
+// ===============================
+// UPDATE STATS
+// ===============================
+function updateStats() {
+  const total = reels.length;
+  const active = reels.filter((r) => r.status === "active").length;
+  const inactive = total - active;
+  const withRewards = reels.filter((r) => r.reward && r.reward !== "").length;
+
+  document.getElementById("totalReels").textContent = total;
+  document.getElementById("activeReels").textContent = active;
+  document.getElementById("inactiveReels").textContent = inactive;
+  document.getElementById("rewardsCount").textContent = withRewards;
+}
+
+// ===============================
+// MODAL CONTROL
+// ===============================
+function openModal() {
+  modal.style.display = "flex";
+}
+
+function closeModal() {
+  modal.style.display = "none";
+}
