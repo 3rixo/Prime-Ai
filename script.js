@@ -1,7 +1,7 @@
 // ===============================
 // CONFIGURATION
 // ===============================
-const BASE_URL = "http://10.88.0.3:8080"; // ⚠️ Change this later to your Google Cloud backend URL
+const BASE_URL = "http://http://10.88.0.3:8080/"; // ⚠️ Change this later to your Google Cloud backend URL
 
 // ===============================
 // DOM ELEMENTS
